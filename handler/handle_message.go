@@ -10,6 +10,14 @@ import (
 	"github.com/line/line-bot-sdk-go/v7/linebot"
 )
 
+
+type MsgValues struct {
+    Text     string
+    Category string
+    Class    string
+    Type     string
+}
+
 // Handler
 func Hello(c echo.Context) error {
 	return c.String(http.StatusOK, "Hello, World!")
@@ -17,16 +25,10 @@ func Hello(c echo.Context) error {
 
 // CallbackHandler handles LINE webhook callbacks
 func LineCallbackHandler(c echo.Context) error {
-	CHANNEL_ACCESS_TOKEN := config.LoadEnvVariable("CHANNEL_ACCESS_TOKEN")
-	CHANNEL_SECRET := config.LoadEnvVariable("CHANNEL_SECRET")
-
-	bot := config.LINEClient(CHANNEL_SECRET,CHANNEL_ACCESS_TOKEN)
-	
+	bot := config.LineClient()
 	req := c.Request()
 	res := c.Response()
-
 	events, err := bot.ParseRequest(req)
-
 	if err != nil {
 		if err == linebot.ErrInvalidSignature {
 			res.WriteHeader(400)
@@ -35,12 +37,28 @@ func LineCallbackHandler(c echo.Context) error {
 		}
 		return nil
 	}
-	
+
+	var msgValues MsgValues
+
 	for _, event := range events {
 		if event.Type == linebot.EventTypeMessage {
 			switch message := event.Message.(type) {
 			case *linebot.TextMessage:
-				if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(message.Text)).Do(); err != nil {
+				resp := config.ConnectWitAI(message.Text)
+				for key, trait := range resp.Traits {
+					value := trait[0].Value
+					switch key {
+					case "category":
+						msgValues.Category = value
+					case "class":
+						msgValues.Class = value
+					case "type":
+						msgValues.Type = value
+					}	
+				}
+				replyMessage := fmt.Sprintf(
+					"รายจ่าย\nข้อความ: %s\nหมวดหมู่: %s\nประเภท: %s\n", resp.Text, msgValues.Category, msgValues.Type )
+				if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(replyMessage)).Do(); err != nil {
 					log.Print(err)
 				}
 			case *linebot.StickerMessage:
@@ -54,3 +72,7 @@ func LineCallbackHandler(c echo.Context) error {
 	}
 	return nil
 }
+
+
+
+
