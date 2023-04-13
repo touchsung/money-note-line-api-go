@@ -2,6 +2,10 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
+	"regexp"
+	"strconv"
+	"time"
 
 	"log"
 	"net/http"
@@ -17,12 +21,15 @@ type MsgValues struct {
     Category string
     Class    string
     Type     string
+	imgUrl	 string
 }
 
 // Handler
 func Hello(c echo.Context) error {
 	return c.String(http.StatusOK, "Hello, World!")
 }
+
+var msgValues MsgValues = MsgValues{}
 
 // CallbackHandler handles LINE webhook callbacks
 func LineCallbackHandler(c echo.Context) error {
@@ -43,16 +50,71 @@ func LineCallbackHandler(c echo.Context) error {
 		if event.Type == linebot.EventTypeMessage {
 			switch message := event.Message.(type) {
 			case *linebot.TextMessage:
-				msgValues := extractMsgValues(message.Text)
-				jsonTemplate := createLineTemplate(msgValues)
-				contents, err := linebot.UnmarshalFlexMessageJSON([]byte(jsonTemplate))
-				if err != nil {
-					return err
-				}
-				_, err = bot.ReplyMessage(event.ReplyToken, linebot.NewFlexMessage("Tracked Money Template", contents),).Do()
+				if message.Text == "ยืนยัน"{
+					if msgValues.Text == "" || msgValues.Class == "" || msgValues.Category == "" || msgValues.Type == "" {
+						bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage("ไม่พบรายการที่จะบันทึก")).Do();
+						msgValues = MsgValues{}	
+					}
 
-				if err != nil {
-					log.Println(err)
+					pattern := `(\d+)`
+					r := regexp.MustCompile(pattern)
+					amountStr := r.FindString(msgValues.Text)
+					numberInt, _ := strconv.Atoi(amountStr)
+					
+					db := config.ConnectDB()
+					defer db.Close()
+
+					// Check if the user exists
+					var userExists bool
+					err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE user_id = $1)", event.Source.UserID).Scan(&userExists)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					if !userExists {
+						// Insert new user into the users table
+						_, err = db.Exec("INSERT INTO users (user_id) VALUES ($1)", event.Source.UserID)
+						if err != nil {
+							log.Fatal(err)
+						}
+					}
+
+					// Insert a new money tracked entry for the user
+					_, err = db.Exec("INSERT INTO money_tracked (user_id, text, amount, class, type, category, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+						event.Source.UserID, msgValues.Text, numberInt, msgValues.Class, msgValues.Type, msgValues.Category, time.Now())
+						
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage("เพิ่มลงฐานข้อมูลเรียบร้อย")).Do(); err != nil {
+						log.Print(err)
+					}
+
+					msgValues = MsgValues{}
+
+				} else if message.Text == "ยกเลิก"{
+					if msgValues.Text == "" || msgValues.Class == "" || msgValues.Category == "" || msgValues.Type == "" {
+						bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage("ไม่พบรายการที่จะบันทึก")).Do(); 
+					}
+					msgValues = MsgValues{}
+					messageReply := fmt.Sprintf("รายการ %s ถูกยกเลิกเรียบร้อย", msgValues.Text)
+					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(messageReply)).Do(); err != nil {
+						log.Print(err)
+					}
+					msgValues = MsgValues{}
+				} else{
+					msgValues = extractMsgValues(message.Text)
+					jsonTemplate := createLineTemplate(msgValues)
+					contents, err := linebot.UnmarshalFlexMessageJSON([]byte(jsonTemplate))
+					if err != nil {
+						return err
+					}
+					_, err = bot.ReplyMessage(event.ReplyToken, linebot.NewFlexMessage("Tracked Money Template", contents),).Do()
+
+					if err != nil {
+						log.Println(err)
+					}
 				}
 			}
 		}
@@ -76,10 +138,6 @@ func extractMsgValues(text string) MsgValues {
 		}
 	}
 
-	return msgValues
-}
-
-func createLineTemplate(extractedMsg MsgValues) string {
 	jsonStringTH := `{
 	"food": "อาหาร",
 	"expenses": "รายจ่าย",
@@ -107,29 +165,33 @@ func createLineTemplate(extractedMsg MsgValues) string {
 		panic(err)
 	}
 
-	var imgUrl string
-	respCategory := data[extractedMsg.Category]
-	respType := data[extractedMsg.Type]
-	respClass := data[extractedMsg.Class]
+	msgValues.Category = data[msgValues.Category]
+	msgValues.Type = data[msgValues.Type]
+	msgValues.Class = data[msgValues.Class]
 
-	if extractedMsg.Category == "" {
-		respCategory = "ไม่พบข้อมูล"
+	if msgValues.Category == "" {
+		msgValues.Category = "ไม่พบข้อมูล"
 	}
 	
-	if extractedMsg.Type == "" {
-		respType = "ไม่พบข้อมูล"
+	if msgValues.Type == "" {
+		msgValues.Type = "ไม่พบข้อมูล"
 	}
 
-	if extractedMsg.Class == "" {
-		respClass = "ไม่พบข้อมูล"
+	if msgValues.Class == "" {
+		msgValues.Class = "ไม่พบข้อมูล"
 	}
 
-	if extractedMsg.Class == "expenses"{
-		imgUrl = "https://media.istockphoto.com/id/1054309772/photo/abstract-red-gradient-color-background-christmas-valentine-wallpaper.jpg?b=1&s=170667a&w=0&k=20&c=d__OJwDP-aaeRAszoZa2AIxj0XFLTYUcgnmSl4ZY4wY="
+	if msgValues.Class == "รายจ่าย"{
+		msgValues.imgUrl = "https://media.istockphoto.com/id/1054309772/photo/abstract-red-gradient-color-background-christmas-valentine-wallpaper.jpg?b=1&s=170667a&w=0&k=20&c=d__OJwDP-aaeRAszoZa2AIxj0XFLTYUcgnmSl4ZY4wY="
 	} else {
-		imgUrl = "https://images.unsplash.com/photo-1617957796155-72d8717ac882?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MXx8Z3JlZW4lMjBibHVycnklMjBiYWNrZ3JvdW5kfGVufDB8fDB8fA%3D%3D&w=1000&q=80"
+		msgValues.imgUrl = "https://images.unsplash.com/photo-1617957796155-72d8717ac882?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MXx8Z3JlZW4lMjBibHVycnklMjBiYWNrZ3JvdW5kfGVufDB8fDB8fA%3D%3D&w=1000&q=80"
 	}
-	
+
+	return msgValues
+}
+
+func createLineTemplate(extractedMsg MsgValues) string {
+
 	jsonTemplate := `{
 		"type": "bubble",
 		"hero": {
@@ -141,7 +203,7 @@ func createLineTemplate(extractedMsg MsgValues) string {
 			"type": "uri",
 			"uri": "http://linecorp.com/"
 			},
-			"url": "`+ imgUrl +`"
+			"url": "`+ extractedMsg.imgUrl +`"
 		},
 		"body": {
 			"type": "box",
@@ -149,7 +211,7 @@ func createLineTemplate(extractedMsg MsgValues) string {
 			"contents": [
 			{
 				"type": "text",
-				"text": "`+ respClass +`",
+				"text": "`+ extractedMsg.Class +`",
 				"weight": "bold",
 				"size": "xl"
 			},
@@ -169,7 +231,7 @@ func createLineTemplate(extractedMsg MsgValues) string {
 						"text": "รายการ",
 						"color": "#aaaaaa",
 						"size": "sm",
-						"flex": 1
+						"flex": 2
 					},
 					{
 						"type": "text",
@@ -177,7 +239,7 @@ func createLineTemplate(extractedMsg MsgValues) string {
 						"wrap": true,
 						"color": "#666666",
 						"size": "sm",
-						"flex": 4
+						"flex": 5
 					}
 					]
 				},
@@ -191,15 +253,15 @@ func createLineTemplate(extractedMsg MsgValues) string {
 						"text": "ประเภท",
 						"color": "#aaaaaa",
 						"size": "sm",
-						"flex": 1
+						"flex": 2
 					},
 					{
 						"type": "text",
-						"text": "`+ respType +`",
+						"text": "`+ extractedMsg.Type + `",
 						"wrap": true,
 						"color": "#666666",
 						"size": "sm",
-						"flex": 4
+						"flex": 5
 					}
 					]
 				},
@@ -213,15 +275,15 @@ func createLineTemplate(extractedMsg MsgValues) string {
 						"text": "หมวดหมู่",
 						"color": "#aaaaaa",
 						"size": "sm",
-						"flex": 1
+						"flex": 2
 					},
 					{
 						"type": "text",
-						"text": "`+ respCategory +`",
+						"text": "`+ extractedMsg.Category +`",
 						"wrap": true,
 						"color": "#666666",
 						"size": "sm",
-						"flex": 4
+						"flex": 5
 					}
 					]
 				}

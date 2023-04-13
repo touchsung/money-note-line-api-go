@@ -1,8 +1,11 @@
 package config
 
 import (
+	"database/sql"
 	"fmt"
+	"log"
 
+	_ "github.com/lib/pq"
 	"github.com/line/line-bot-sdk-go/v7/linebot"
 	"github.com/spf13/viper"
 	witai "github.com/wit-ai/wit-go/v2"
@@ -57,6 +60,16 @@ func ConnectWitAI(msg string) *witai.MessageResponse {
   return resp
 }
 
+// Connect to DB
+func ConnectDB() *sql.DB{
+   connStr := LoadEnvVariable("DB_URL")
+    // Connect to database
+    db, err := sql.Open("postgres", connStr)
+    if err != nil {
+        log.Fatal(err)
+    }
+    return db
+}
 
  
 
