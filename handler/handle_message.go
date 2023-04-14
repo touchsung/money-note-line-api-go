@@ -97,7 +97,6 @@ func LineCallbackHandler(c echo.Context) error {
 					if msgValues.Text == "" || msgValues.Class == "" || msgValues.Category == "" || msgValues.Type == "" {
 						bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage("ไม่พบรายการที่จะบันทึก")).Do(); 
 					}
-					msgValues = MsgValues{}
 					messageReply := fmt.Sprintf("รายการ %s ถูกยกเลิกเรียบร้อย", msgValues.Text)
 					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(messageReply)).Do(); err != nil {
 						log.Print(err)
