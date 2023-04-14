@@ -155,7 +155,8 @@ func extractMsgValues(text string) MsgValues {
 	"saving": "การออม",
 	"fixed": "คงที่",
 	"flexible": "ผันแปร",
-	"salary": "เงินเดือน"
+	"salary": "เงินเดือน",
+	"equipment": "อุปกรณ์"
 	}`
 
 	data := make(map[string]string)
