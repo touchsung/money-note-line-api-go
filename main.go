@@ -1,13 +1,14 @@
 package main
 
 import (
-	"github.com/Touchsung/money-note-line-api-go/config"
+	"os"
+
 	"github.com/Touchsung/money-note-line-api-go/router"
 )
 
 func main() {
     r := router.Router()
-	  port := config.LoadEnvVariable("PORT")
+	  port := os.Getenv("PORT")
 	if port == "" {
         port = "8080"
     }

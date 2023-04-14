@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 
 	_ "github.com/lib/pq"
 	"github.com/line/line-bot-sdk-go/v7/linebot"
@@ -32,8 +33,8 @@ func LoadEnvVariable(key string) string {
 
 // LINEConfig returns a new LINE SDK client
 func LineClient() (*linebot.Client) {
-  	CHANNEL_ACCESS_TOKEN := LoadEnvVariable("CHANNEL_ACCESS_TOKEN")
-	  CHANNEL_SECRET := LoadEnvVariable("CHANNEL_SECRET")
+  	CHANNEL_ACCESS_TOKEN := os.Getenv("CHANNEL_ACCESS_TOKEN")
+	  CHANNEL_SECRET := os.Getenv("CHANNEL_SECRET")
 
     bot, err := linebot.New(
 		CHANNEL_SECRET,
@@ -49,7 +50,7 @@ func LineClient() (*linebot.Client) {
 
 // Connect Wit.ai
 func ConnectWitAI(msg string) *witai.MessageResponse {
-  WIT_AI_TOKEN := LoadEnvVariable("WIT_AI_TOKEN")
+  WIT_AI_TOKEN := os.Getenv("WIT_AI_TOKEN")
 
   client := witai.NewClient(WIT_AI_TOKEN)
 
@@ -62,7 +63,7 @@ func ConnectWitAI(msg string) *witai.MessageResponse {
 
 // Connect to DB
 func ConnectDB() *sql.DB{
-   connStr := LoadEnvVariable("DB_URL")
+   connStr := os.Getenv("DB_URL")
     // Connect to database
     db, err := sql.Open("postgres", connStr)
     if err != nil {
