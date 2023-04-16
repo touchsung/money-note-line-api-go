@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/line/line-bot-sdk-go/v7/linebot"
 	witai "github.com/wit-ai/wit-go/v2"
@@ -13,10 +12,6 @@ import (
 
 // LINEConfig returns a new LINE SDK client
 func LineClient() (*linebot.Client) {
-   err := godotenv.Load()
-    if err != nil {
-        log.Fatalf("Error loading .env file: %v", err)
-    }
   	CHANNEL_ACCESS_TOKEN := os.Getenv("CHANNEL_ACCESS_TOKEN")
 	  CHANNEL_SECRET := os.Getenv("CHANNEL_SECRET")
 
@@ -34,10 +29,6 @@ func LineClient() (*linebot.Client) {
 
 // Connect Wit.ai
 func ConnectWitAI(msg string) *witai.MessageResponse {
-   err := godotenv.Load()
-    if err != nil {
-        log.Fatalf("Error loading .env file: %v", err)
-    }
   WIT_AI_TOKEN := os.Getenv("WIT_AI_TOKEN")
 
   client := witai.NewClient(WIT_AI_TOKEN)
@@ -51,10 +42,6 @@ func ConnectWitAI(msg string) *witai.MessageResponse {
 
 // Connect to DB
 func ConnectDB() *sql.DB{
-   err := godotenv.Load()
-    if err != nil {
-        log.Fatalf("Error loading .env file: %v", err)
-    }
    connStr := os.Getenv("DB_URL")
     // Connect to database
     db, err := sql.Open("postgres", connStr)
