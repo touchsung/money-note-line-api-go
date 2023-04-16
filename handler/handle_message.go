@@ -49,4 +49,3 @@ func LineCallbackHandler(c echo.Context) error {
 		}
 	}
 	return nil
-}
