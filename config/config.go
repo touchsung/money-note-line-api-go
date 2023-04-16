@@ -2,37 +2,21 @@ package config
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"os"
 
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/line/line-bot-sdk-go/v7/linebot"
-	"github.com/spf13/viper"
 	witai "github.com/wit-ai/wit-go/v2"
 )
 
-//  Load ENV from .env file
-func LoadEnvVariable(key string) string {
-  viper.SetConfigFile(".env")
-
-  err := viper.ReadInConfig()
-
-  if err != nil {
-    fmt.Printf("Error while reading config file %s", err)
-  }
-
-  value, ok := viper.Get(key).(string)
-
-  if !ok {
-    fmt.Printf("Invalid type assertion")
-  }
-
-  return value
-}
-
 // LINEConfig returns a new LINE SDK client
 func LineClient() (*linebot.Client) {
+   err := godotenv.Load()
+    if err != nil {
+        log.Fatalf("Error loading .env file: %v", err)
+    }
   	CHANNEL_ACCESS_TOKEN := os.Getenv("CHANNEL_ACCESS_TOKEN")
 	  CHANNEL_SECRET := os.Getenv("CHANNEL_SECRET")
 
@@ -50,6 +34,10 @@ func LineClient() (*linebot.Client) {
 
 // Connect Wit.ai
 func ConnectWitAI(msg string) *witai.MessageResponse {
+   err := godotenv.Load()
+    if err != nil {
+        log.Fatalf("Error loading .env file: %v", err)
+    }
   WIT_AI_TOKEN := os.Getenv("WIT_AI_TOKEN")
 
   client := witai.NewClient(WIT_AI_TOKEN)
@@ -63,6 +51,10 @@ func ConnectWitAI(msg string) *witai.MessageResponse {
 
 // Connect to DB
 func ConnectDB() *sql.DB{
+   err := godotenv.Load()
+    if err != nil {
+        log.Fatalf("Error loading .env file: %v", err)
+    }
    connStr := os.Getenv("DB_URL")
     // Connect to database
     db, err := sql.Open("postgres", connStr)
