@@ -75,10 +75,7 @@ func HandleYearlySummaryReport(event *linebot.Event, bot *linebot.Client) {
 }
 
 func HandleConfirmationMessage(event *linebot.Event, bot *linebot.Client, msgValues *model.MsgValues) {
-    if msgValues.Text == "" || msgValues.Class == "" || msgValues.Category == "" || msgValues.Type == "" {
-        bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage("ไม่พบรายการที่จะบันทึก")).Do();
-    } else{
-	pattern := `(\d+)`
+    pattern := `(\d+)`
     r := regexp.MustCompile(pattern)
     amountStr := r.FindString(msgValues.Text)
     numberInt, _ := strconv.Atoi(amountStr)
@@ -112,8 +109,8 @@ func HandleConfirmationMessage(event *linebot.Event, bot *linebot.Client, msgVal
     if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage("เพิ่มลงฐานข้อมูลเรียบร้อย")).Do(); err != nil {
         log.Print(err)
     }
-	}
-	*msgValues = model.MsgValues{}
+	
+    *msgValues = model.MsgValues{}
 }
 
 func HandleCancelMessage(event *linebot.Event,bot *linebot.Client, msgValues *model.MsgValues)  {
