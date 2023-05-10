@@ -32,6 +32,7 @@ func ExtractMsgValues(text string) model.MsgValues {
 func HandleLineTemplate(event *linebot.Event, bot *linebot.Client,extractedMsg model.MsgValues)  {
 	jsonStringTH := `{
 	"food": "อาหาร",
+ "equipment": "อุปกรณ์",
 	"expenses": "รายจ่าย",
 	"income": "รายรับ",
 	"extra": "เงินพิเศษ",
